@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Central re-export barrel for all type definitions.
  * All consumers should import types from @/types.
  */
@@ -28,3 +28,8 @@ export type {
   IReportAPI,
   ReplayScenario,
 } from './api';
+
+export type {
+  KnowledgeDoc,
+  CreateKnowledgeDocRequest,
+} from './knowledge';

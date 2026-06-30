@@ -1,0 +1,4 @@
+ .codebuddy/
+ .workbuddy/
+ node_modules/
+ .env
