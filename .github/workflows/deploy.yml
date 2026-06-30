@@ -1,0 +1,28 @@
+ name: Deploy to Server
+
+ on:
+   push:
+     branches: [master]
+
+ jobs:
+   deploy:
+     runs-on: ubuntu-latest
+     steps:
+       - uses: actions/checkout@v4
+
+       - name: Deploy via SSH
+         uses: easingthemes/ssh-deploy@main
+         with:
+           SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
+           REMOTE_HOST: ${{ secrets.SERVER_HOST }}
+           REMOTE_USER: ${{ secrets.SERVER_USER }}
+           SOURCE: .
+           TARGET: /var/www/agent-forge
+           EXCLUDE: node_modules, .git
+           SCRIPT_BEFORE: |
+             whoami
+             ls -la /var/www/agent-forge
+           SCRIPT_AFTER: |
+             cd /var/www/agent-forge
+             git log --oneline -1
+             echo "✅ Deploy complete"
