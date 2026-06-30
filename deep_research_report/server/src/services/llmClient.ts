@@ -10,14 +10,15 @@ let client: OpenAI | null = null;
 
 function getClient(): OpenAI {
   if (!client) {
-    client = new OpenAI({
+    const clientConfig: Record<string, unknown> = {
       apiKey: config.llm.apiKey,
       timeout: config.llm.timeout,
       maxRetries: config.llm.maxRetries,
-    }
+    };
     if (config.llm.baseURL) {
       clientConfig.baseURL = config.llm.baseURL;
-    });
+    }
+    client = new OpenAI(clientConfig);
   }
   return client;
 }
