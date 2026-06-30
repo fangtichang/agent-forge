@@ -1,8 +1,11 @@
-FROM node:22-alpine AS builder
+﻿FROM node:22-alpine AS builder
 
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev
+RUN npm ci
+COPY tsconfig.json ./
+COPY src/ ./src/
+RUN npm run build
 
 FROM node:22-alpine AS runner
 
@@ -11,8 +14,8 @@ RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 appuser
 
 COPY --from=builder /app/node_modules ./node_modules
-COPY package.json tsconfig.json ./
-COPY src/ ./src/
+COPY --from=builder /app/dist ./dist
+COPY package.json ./
 
 ENV NODE_ENV=production
 ENV PORT=3001
@@ -20,4 +23,4 @@ ENV PORT=3001
 EXPOSE 3001
 USER appuser
 
-CMD ["node", "--import", "tsx/esm", "src/index.ts"]
+CMD ["node", "dist/index.js"]
