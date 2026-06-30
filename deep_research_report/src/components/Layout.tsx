@@ -12,7 +12,7 @@ export default function Layout() {
   ];
 
   return (
-    <div className="app-layout">
+    <>
       <header className="appbar">
         <div className="appbar-brand">
           <div className="appbar-logo">
@@ -20,20 +20,28 @@ export default function Layout() {
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
             </svg>
           </div>
-          <span className="appbar-title">Agent Forge</span>
+          <span className="appbar-title">
+            Agent Forge
+            <span className="appbar-title-dot" />
+          </span>
           <div className="appbar-divider" />
-          <span className="appbar-subtitle">行业深度研究报告 Agent</span>
+          <span className="appbar-subtitle">行业深度研究报告</span>
         </div>
       </header>
 
-      <Sidebar />
+      <div className="layout-shell">
+        <Sidebar />
+        <main className="main-content">
+          <Outlet />
+        </main>
+      </div>
 
-      <nav className="tabbar" aria-label="移动端导航">
-        <div className="tabbar-inner">
+      <nav className="mobile-tabbar" aria-label="移动端导航">
+        <div className="mobile-tabbar-inner">
           {tabItems.map((t) => (
             <div
               key={t.path}
-              className={'tabbar-item' + (location.pathname === t.path ? ' active' : '')}
+              className={'mobile-tab' + (location.pathname === t.path ? ' active' : '')}
               onClick={() => navigate(t.path)}
               role="button"
               tabIndex={0}
@@ -48,10 +56,6 @@ export default function Layout() {
           ))}
         </div>
       </nav>
-
-      <main className="main-content">
-        <Outlet />
-      </main>
-    </div>
+    </>
   );
 }
