@@ -1,6 +1,5 @@
-﻿/**
+/**
  * LLM Client — OpenAI SDK wrapper with retries, timeout, and streaming.
- * Supports OpenAI and any OpenAI-compatible API (DeepSeek, etc.) via baseURL.
  */
 import OpenAI from 'openai';
 import { config } from '../config.js';
@@ -11,16 +10,14 @@ let client: OpenAI | null = null;
 
 function getClient(): OpenAI {
   if (!client) {
-    const clientConfig: any = {
+    client = new OpenAI({
       apiKey: config.llm.apiKey,
       timeout: config.llm.timeout,
       maxRetries: config.llm.maxRetries,
-    };
-    // Allow custom base URL for OpenAI-compatible APIs (DeepSeek, etc.)
+    }
     if (config.llm.baseURL) {
       clientConfig.baseURL = config.llm.baseURL;
-    }
-    client = new OpenAI(clientConfig);
+    });
   }
   return client;
 }
@@ -31,7 +28,7 @@ export async function decomposeTopic(topic: string): Promise<
 > {
   const openai = getClient();
 
-  const systemPrompt = 你是一个行业研究专家。请将研究话题拆解为4-5个关键子任务，每个子任务包含研究标题、搜索查询词和多个搜索关键词。
+  const systemPrompt = `你是一个行业研究专家。请将研究话题拆解为4-5个关键子任务，每个子任务包含研究标题、搜索查询词和多个搜索关键词。
 
 输出格式为严格 JSON 数组：
 [
@@ -45,14 +42,14 @@ export async function decomposeTopic(topic: string): Promise<
 要求：
 - 子任务之间逻辑递进，覆盖市场概况、竞争格局、技术趋势、风险挑战、未来展望
 - 搜索查询语句使用中文，精确到可执行的搜索
-- 每个子任务提供3-4个搜索关键词;
+- 每个子任务提供3-4个搜索关键词`;
 
   try {
     const response = await openai.chat.completions.create({
       model: config.llm.model,
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: 请拆解以下研究话题： },
+        { role: 'user', content: `请拆解以下研究话题：${topic}` },
       ],
       temperature: 0.5,
       max_tokens: 2000,
@@ -64,6 +61,7 @@ export async function decomposeTopic(topic: string): Promise<
       throw new AppError(ErrorCode.LLM_ERROR, 'LLM returned empty response', 502);
     }
 
+    // Parse JSON response — GPT-4o with json_object wraps in {"subTasks": [...]}
     const parsed = JSON.parse(content);
     const tasks = parsed.subTasks || parsed;
 
@@ -72,7 +70,7 @@ export async function decomposeTopic(topic: string): Promise<
     }
 
     return tasks.slice(0, 5).map((t: any, i: number) => ({
-      title: t.title || 子任务 ,
+      title: t.title || `子任务 ${i + 1}`,
       query: t.query || t.title || '',
       searchTerms: Array.isArray(t.searchTerms) ? t.searchTerms : [],
     }));
@@ -80,7 +78,7 @@ export async function decomposeTopic(topic: string): Promise<
     if (err instanceof AppError) throw err;
     throw new AppError(
       ErrorCode.LLM_ERROR,
-      LLM decompose failed: ,
+      `LLM decompose failed: ${(err as Error).message}`,
       502,
     );
   }
@@ -94,7 +92,7 @@ export async function* generateChapterStream(
 ): AsyncGenerator<{ chunk: string; citations?: Citation[] }> {
   const openai = getClient();
 
-  const systemPrompt = 你是一个行业研究分析师，正在撰写深度研究报告的章节。
+  const systemPrompt = `你是一个行业研究分析师，正在撰写深度研究报告的章节。
 
 写作要求：
 1. 专业、客观、数据驱动
@@ -103,16 +101,16 @@ export async function* generateChapterStream(
 4. 每段2-3句话，避免过长段落
 5. 包含具体数据、公司名称、时间节点
 
-搜索上下文会提供相关来源，请基于这些信息撰写，同时结合你的知识补充。;
+搜索上下文会提供相关来源，请基于这些信息撰写，同时结合你的知识补充。`;
 
-  const userPrompt = 请撰写以下章节：
-章节标题：
-章节大纲：
+  const userPrompt = `请撰写以下章节：
+章节标题：${chapterTitle}
+章节大纲：${chapterOutline}
 
 搜索上下文（参考来源）：
+${searchContext}
 
-
-请开始撰写。;
+请开始撰写。`;
 
   try {
     const stream = await openai.chat.completions.create({
@@ -126,16 +124,38 @@ export async function* generateChapterStream(
       stream: true,
     });
 
+    let buffer = '';
+    let citationIndex = 0;
+
     for await (const chunk of stream) {
       const delta = chunk.choices[0]?.delta?.content;
       if (!delta) continue;
+
+      buffer += delta;
+
+      // Extract citations from the buffer in [citation:N] format
+      const citations: Citation[] = [];
+      const citationRegex = /\[citation:(\d+)\]/g;
+      let match;
+
+      while ((match = citationRegex.exec(buffer)) !== null) {
+        const index = parseInt(match[1], 10);
+        if (index > citationIndex) {
+          citationIndex = index;
+        }
+      }
+
       yield { chunk: delta };
     }
+
+    // Build citation list from search context references
+    // In production, this would be extracted from the LLM output and matched
+    // to actual search results stored in the report context.
   } catch (err) {
     if (err instanceof AppError) throw err;
     throw new AppError(
       ErrorCode.LLM_ERROR,
-      LLM generation failed: ,
+      `LLM generation failed: ${(err as Error).message}`,
       502,
     );
   }
@@ -149,16 +169,16 @@ export async function* generateFollowUpStream(
 ): AsyncGenerator<{ chunk: string }> {
   const openai = getClient();
 
-  const systemPrompt = 你是一个行业研究助手，正在回答用户对研究报告的追问。
+  const systemPrompt = `你是一个行业研究助手，正在回答用户对研究报告的追问。
 要求：
 1. 基于上下文精确回答
 2. 补充相关数据和分析
 3. 使用 Markdown 格式
-4. 如果不确定，诚实说明;
+4. 如果不确定，诚实说明`;
 
-  let context = 报告段落：\n;
+  let context = `报告段落：\n${contextParagraph}`;
   if (parentQA) {
-    context += \n\n上一轮追问：\n问：\n答：;
+    context += `\n\n上一轮追问：\n问：${parentQA.question}\n答：${parentQA.answer}`;
   }
 
   try {
@@ -166,7 +186,7 @@ export async function* generateFollowUpStream(
       model: config.llm.model,
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: ${context}\n\n用户追问： },
+        { role: 'user', content: `${context}\n\n用户追问：${question}` },
       ],
       temperature: 0.5,
       max_tokens: 1500,
@@ -182,7 +202,7 @@ export async function* generateFollowUpStream(
     if (err instanceof AppError) throw err;
     throw new AppError(
       ErrorCode.LLM_ERROR,
-      LLM follow-up failed: ,
+      `LLM follow-up failed: ${(err as Error).message}`,
       502,
     );
   }
