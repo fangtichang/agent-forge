@@ -12,7 +12,11 @@ import type { IReportAPI } from '@/types';
  */
 export function useFollowUp() {
   const { state, dispatch } = useReportContext();
-  const api: IReportAPI = AdapterFactory.create();
+
+  /** Get current API instance (always fresh, supports async backend detection swap). */
+  function getApi(): IReportAPI {
+    return AdapterFactory.create();
+  }
 
   /**
    * Ask a follow-up question about a specific paragraph in a chapter.
@@ -73,7 +77,7 @@ export function useFollowUp() {
         );
         const reportContext = chapter?.content || '';
 
-        for await (const chunkEvent of api.followUpStream({
+        for await (const chunkEvent of getApi().followUpStream({
           chapterId,
           paragraphIndex,
           question,
@@ -95,7 +99,7 @@ export function useFollowUp() {
         dispatch({ type: 'SET_ERROR', error: message });
       }
     },
-    [api, dispatch, state.followUps, state.report],
+    [dispatch, state.followUps, state.report],
   );
 
   /**

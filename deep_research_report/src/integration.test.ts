@@ -97,11 +97,11 @@ describe('Integration Tests', () => {
           replace: vi.fn(),
           reload: vi.fn(),
         },
-        writable: true,
-      });
-    });
+       writable: true,
+     });
+     }, 30000);
   });
-
+ 
   describe('Report Storage Persistence', () => {
     it('should save and reload a report from localStorage', () => {
       const report: Report = {

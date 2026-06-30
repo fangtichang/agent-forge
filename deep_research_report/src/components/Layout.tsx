@@ -1,9 +1,19 @@
-﻿import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from '@/components/Sidebar';
+import { AdapterFactory, waitForModeDetection } from '@/services/adapter';
 
 export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [apiMode, setApiMode] = useState<'live' | 'mock' | 'detecting'>('detecting');
+
+ useEffect(() => {
+   // Detect mode asynchronously and update badge
+   waitForModeDetection().then((mode) => {
+     setApiMode(mode);
+   });
+ }, []);
 
   const tabItems = [
     { path: '/', label: '新建', icon: 'search' },
@@ -26,6 +36,25 @@ export default function Layout() {
           </span>
           <div className="appbar-divider" />
           <span className="appbar-subtitle">行业深度研究报告</span>
+          <div className="appbar-divider" />
+          <span
+            className={`badge ${apiMode === 'live' ? 'badge-success' : apiMode === 'mock' ? 'badge-warning' : 'badge-neutral'}`}
+            style={{ marginLeft: 0 }}
+            title={
+              apiMode === 'live'
+                ? '已连接后端 API — 实时生成'
+                : apiMode === 'mock'
+                  ? '离线演示模式 — 使用预录数据回放'
+                  : '正在检测后端服务...'
+            }
+          >
+            {apiMode === 'detecting' && (
+              <span className="badge-dot" style={{ background: 'var(--color-text-secondary)', animation: 'pulse 1.5s ease-in-out infinite' }} />
+            )}
+            {apiMode === 'live' && <span className="badge-dot" />}
+            {apiMode === 'mock' && <span className="badge-dot" />}
+            {apiMode === 'live' ? 'Live' : apiMode === 'mock' ? 'Demo' : '...'}
+          </span>
         </div>
       </header>
 

@@ -42,5 +42,6 @@ export const REPORT_CONFIG = {
 } as const;
 
 /** URL query parameter name for switching to replay/mock mode. */
-export const MODE_PARAM: string = 'mode';
-export const MODE_REPLAY: string = 'replay';
+ export const MODE_PARAM: string = 'mode';
+ export const MODE_REPLAY: string = 'replay';
+ export const MODE_LIVE: string = 'live';

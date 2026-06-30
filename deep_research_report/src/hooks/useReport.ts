@@ -9,12 +9,22 @@ import type { IReportAPI } from '@/types';
  * Custom hook encapsulating the full report generation workflow.
  *
  * Usage:
- *   const { startReport, loadReport, resetReport, api } = useReport();
+ *   const { startReport, loadReport, resetReport, getApi } = useReport();
  */
 export function useReport() {
   const { state, dispatch } = useReportContext();
   const navigate = useNavigate();
-  const api: IReportAPI = AdapterFactory.create();
+
+  /**
+   * Get the current API service instance.
+   *
+   * Called fresh on each invocation (not cached at hook level) so that
+   * async backend detection can swap the adapter mid-session without
+   * stale closures holding a reference to the old instance.
+   */
+  function getApi(): IReportAPI {
+    return AdapterFactory.create();
+  }
 
   /**
    * Start a new report generation for the given topic.
@@ -28,6 +38,7 @@ export function useReport() {
   const startReport = useCallback(
     async (topic: string) => {
       try {
+        const api = getApi();
         const reportId = StorageService.generateId();
 
         // Phase 1: Initialize report
@@ -92,7 +103,7 @@ export function useReport() {
         dispatch({ type: 'SET_ERROR', error: message });
       }
     },
-    [api, dispatch, navigate],
+    [dispatch, navigate],
   );
 
   /**
@@ -124,6 +135,6 @@ export function useReport() {
     startReport,
     loadReport,
     resetReport,
-    api,
+    getApi,
   };
 }

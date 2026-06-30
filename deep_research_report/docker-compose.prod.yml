@@ -1,0 +1,164 @@
+version: '3.8'
+
+# ============================================================
+# Agent Forge — Production Docker Compose
+# ============================================================
+# Usage:
+#   1. Copy .env.example to .env and fill in secrets
+#   2. Build frontend: cd .. && npm run build
+#   3. Start:     docker compose -f docker-compose.prod.yml up -d
+#   4. Status:    docker compose -f docker-compose.prod.yml ps
+#   5. Logs:      docker compose -f docker-compose.prod.yml logs -f
+# ============================================================
+
+services:
+  # ── nginx: Reverse proxy + static file server ──
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: agent-forge-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./dist:/usr/share/nginx/html:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - certbot_www:/var/www/certbot:ro
+    depends_on:
+      - backend
+    networks:
+      - agent-forge
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ── Backend: Express + TypeScript API server ──
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    image: agent-forge-backend:latest
+    container_name: agent-forge-backend
+    expose:
+      - "3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - HOST=0.0.0.0
+      - DATABASE_URL=postgresql://agent:${DB_PASSWORD:-changeme}@postgres:5432/agent_forge
+      - REDIS_URL=redis://redis:6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o}
+      - TAVILY_API_KEY=${TAVILY_API_KEY}
+      - API_KEY_SALT=${API_KEY_SALT:-changeme}
+      - CORS_ORIGIN=${CORS_ORIGIN:-https://baiyemeng.top}
+      - VALID_API_KEYS=${VALID_API_KEYS:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - agent-forge
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ── PostgreSQL with pgvector ──
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: agent-forge-postgres
+    expose:
+      - "5432"
+    environment:
+      - POSTGRES_DB=agent_forge
+      - POSTGRES_USER=agent
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-changeme}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./server/db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agent -d agent_forge"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - agent-forge
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+
+  # ── Redis for caching ──
+  redis:
+    image: redis:7-alpine
+    container_name: agent-forge-redis
+    expose:
+      - "6379"
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - agent-forge
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+
+  # ── (Optional) Certbot for Let's Encrypt SSL ──
+  # Uncomment when ready for HTTPS setup
+  # certbot:
+  #   image: certbot/certbot:latest
+  #   container_name: agent-forge-certbot
+  #   volumes:
+  #     - ./ssl:/etc/letsencrypt
+  #     - certbot_www:/var/www/certbot
+  #   entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+  #   networks:
+  #     - agent-forge
+  #   restart: always
+
+volumes:
+  pgdata:
+    name: agent-forge-pgdata
+  redisdata:
+    name: agent-forge-redisdata
+  certbot_www:
+    name: agent-forge-certbot-www
+
+networks:
+  agent-forge:
+    name: agent-forge
+    driver: bridge
