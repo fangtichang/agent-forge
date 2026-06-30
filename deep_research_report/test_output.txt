@@ -1,0 +1,21 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.9 [39m[90mD:/demo_001/deep_research_report[39m
+
+ [32m✓[39m src/context/ReportContext.test.ts [2m([22m[2m35 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m src/hooks/useFollowUp.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m src/components/CitationTooltip.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+[90mstderr[2m | src/services/storage.test.ts[2m > [22m[2mStorageService[2m > [22m[2mmalformed data recovery[2m > [22m[2mshould return null when loading malformed JSON
+[22m[39mFailed to load report from localStorage: SyntaxError: Unexpected token 'o', "not valid json {{{" is not valid JSON
+    at JSON.parse (<anonymous>)
+    at Function.loadReport (D:/demo_001/deep_research_report/src/services/storage.ts:44:19)
+    at D:/demo_001/deep_research_report/src/services/storage.test.ts:187:37
+    at file:///D:/demo_001/deep_research_report/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:302:11
+    at file:///D:/demo_001/deep_research_report/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:1903:26
+    at file:///D:/demo_001/deep_research_report/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:2326:20
+    at new Promise (<anonymous>)
+    at runWithCancel (file:///D:/demo_001/deep_research_report/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:2323:10)
+    at file:///D:/demo_001/deep_research_report/node_modules/[4m@vitest/runner[24m/dist/chunk-artifact.js:2305:20
+    at new Promise (<anonymous>)
+
+ [32m✓[39m src/services/storage.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 30[2mms[22m[39m
+ [32m✓[39m src/services/replayEngine.test.ts [2m([22m[2m22 tests[22m[2m)[22m[32m 35[2mms[22m[39m
