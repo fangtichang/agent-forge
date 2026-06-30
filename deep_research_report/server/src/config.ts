@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Application configuration — loaded from environment variables.
  */
 import 'dotenv/config';
@@ -19,14 +19,15 @@ export const config = {
 
   redis: {
     url: process.env.REDIS_URL || 'redis://localhost:6379',
-    searchCacheTtl: 24 * 60 * 60,        // 24 hours
-    llmCacheTtl: 60 * 60,                 // 1 hour
-    sessionTtl: 30 * 60,                  // 30 minutes
+    searchCacheTtl: 24 * 60 * 60,
+    llmCacheTtl: 60 * 60,
+    sessionTtl: 30 * 60,
   },
 
   llm: {
     apiKey: process.env.OPENAI_API_KEY || '',
-    model: process.env.OPENAI_MODEL || 'gpt-4o',
+    baseURL: process.env.OPENAI_BASE_URL || '',
+    model: process.env.OPENAI_MODEL || 'deepseek-chat',
     embeddingModel: process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small',
     maxTokens: parseInt(process.env.LLM_MAX_TOKENS || '4096', 10),
     temperature: parseFloat(process.env.LLM_TEMPERATURE || '0.7'),
@@ -57,7 +58,7 @@ export function validateConfig(): string[] {
   const errors: string[] = [];
 
   if (config.isProd) {
-    if (!config.llm.apiKey) errors.push('OPENAI_API_KEY is required in production');
+    if (!config.llm.apiKey) errors.push('OPENAI_API_KEY is required in production (use DeepSeek key if using DeepSeek API)');
     if (!config.search.tavilyApiKey) errors.push('TAVILY_API_KEY is required in production');
     if (config.security.apiKeySalt === 'change-me-in-production') {
       errors.push('API_KEY_SALT must be changed in production');
